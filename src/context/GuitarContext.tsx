@@ -11,9 +11,24 @@ export interface NotificationItem {
   read: boolean;
 }
 
+export type AppTabType =
+  | 'course'
+  | 'tuner'
+  | 'tabplayer'
+  | 'songbook'
+  | 'backingtrack'
+  | 'trainer'
+  | 'routine'
+  | 'rhythm'
+  | 'recorder'
+  | 'fretboard'
+  | 'metronome'
+  | 'chords'
+  | 'journal';
+
 interface GuitarContextType {
-  activeTab: 'course' | 'tuner' | 'recorder' | 'fretboard' | 'metronome' | 'chords' | 'journal';
-  setActiveTab: (tab: 'course' | 'tuner' | 'recorder' | 'fretboard' | 'metronome' | 'chords' | 'journal') => void;
+  activeTab: AppTabType;
+  setActiveTab: (tab: AppTabType) => void;
   selectedLessonId: string;
   setSelectedLessonId: (id: string) => void;
   profile: UserProfile;
@@ -22,6 +37,7 @@ interface GuitarContextType {
   getLessonProgress: (lessonId: string, totalExercises: number) => number;
   getTotalProgress: () => number;
   logPractice: (minutes: number, notes: string, lessonId?: string) => void;
+  addPracticeSession: (minutes: number, notes: string, exercises?: string[]) => void;
   recordings: AudioRecording[];
   saveRecording: (recording: AudioRecording) => void;
   deleteRecording: (id: string) => void;
@@ -30,6 +46,13 @@ interface GuitarContextType {
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
   addNotification: (title: string, message: string, type?: 'info' | 'success' | 'warning') => void;
+  // Floating Companion Video
+  floatingVideo: { videoId: string; title: string; lessonId?: string; timestamp?: number } | null;
+  setFloatingVideo: (video: { videoId: string; title: string; lessonId?: string; timestamp?: number } | null) => void;
+  isFloatingMinimized: boolean;
+  setIsFloatingMinimized: (min: boolean) => void;
+  isTheaterMode: boolean;
+  setIsTheaterMode: (theater: boolean) => void;
   updateProfile: (data: Partial<UserProfile>) => void;
   setCustomLessonVideo: (lessonId: string, urlOrId: string) => void;
   exportUserData: (format: 'json' | 'csv') => void;
@@ -113,6 +136,11 @@ export const GuitarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       read: false
     }
   ]);
+
+  // Floating Companion Video state (keeps video playing while navigating Tuner, Metronome, Fretboard)
+  const [floatingVideo, setFloatingVideo] = useState<{ videoId: string; title: string; lessonId?: string; timestamp?: number } | null>(null);
+  const [isFloatingMinimized, setIsFloatingMinimized] = useState<boolean>(false);
+  const [isTheaterMode, setIsTheaterMode] = useState<boolean>(false);
 
   // Save profile changes
   useEffect(() => {
@@ -234,6 +262,21 @@ export const GuitarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   };
 
+  const addPracticeSession = (minutes: number, notes: string, exercises?: string[]) => {
+    const session: PracticeSession = {
+      id: 'session_' + Date.now(),
+      timestamp: Date.now(),
+      minutes,
+      notes,
+      exercisesCompleted: exercises || Object.keys(profile.completedExercises)
+    };
+
+    setProfile(prev => ({
+      ...prev,
+      practiceHistory: [session, ...prev.practiceHistory]
+    }));
+  };
+
   const saveRecording = (rec: AudioRecording) => {
     setRecordings(prev => [rec, ...prev]);
     addNotification(
@@ -351,6 +394,7 @@ export const GuitarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         getLessonProgress,
         getTotalProgress,
         logPractice,
+        addPracticeSession,
         recordings,
         saveRecording,
         deleteRecording,
@@ -359,6 +403,12 @@ export const GuitarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         markNotificationRead,
         clearNotifications,
         addNotification,
+        floatingVideo,
+        setFloatingVideo,
+        isFloatingMinimized,
+        setIsFloatingMinimized,
+        isTheaterMode,
+        setIsTheaterMode,
         updateProfile,
         setCustomLessonVideo,
         exportUserData,

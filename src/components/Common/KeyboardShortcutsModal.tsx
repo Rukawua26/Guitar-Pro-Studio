@@ -7,15 +7,17 @@ interface KeyboardShortcutsModalProps {
 
 export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ onClose }) => {
   const shortcuts = [
-    { key: 'Espacio', action: 'Contar cambio limpio en el Test de 1 Minuto / Iniciar' },
-    { key: '1', action: 'Ir al Módulo de Curso (7 Niveles)' },
-    { key: '2', action: 'Ir al Afinador Web Digital' },
-    { key: '3', action: 'Ir a la Grabadora / Estudio DAW' },
-    { key: '4', action: 'Ir al Diapasón Interactivo & Modos' },
-    { key: '5', action: 'Ir al Metrónomo' },
-    { key: '6', action: 'Ir al Diccionario de Acordes' },
-    { key: '7', action: 'Ir al Diario de Práctica' },
-    { key: 'T', action: 'Tap Tempo (en la pestaña de Metrónomo)' },
+    { key: '1', action: 'Ir al Curso (7 Niveles Metodológicos)' },
+    { key: '2', action: 'Ir al Afinador DSP de Alta Precisión' },
+    { key: '3', action: 'Ir a la Tablatura DAW (Karplus-Strong)' },
+    { key: '4', action: 'Ir al Entrenador de Memoria & Oído' },
+    { key: '5', action: 'Ir a la Rutina Diaria Cronometrada' },
+    { key: '6', action: 'Ir al Analizador de Precisión por Micrófono' },
+    { key: '7', action: 'Ir al Diapasón Interactivo & Modos' },
+    { key: '8', action: 'Ir al Metrónomo & Ritmo' },
+    { key: '9', action: 'Ir a la Grabadora / Estudio DAW' },
+    { key: '0', action: 'Ir al Diario de Práctica' },
+    { key: 'Espacio', action: 'Contar cambio limpio en el Test de 1 Minuto' },
     { key: 'Esc', action: 'Cerrar cualquier ventana modal activa' }
   ];
 
@@ -37,7 +39,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ 
           Agiliza tu flujo de trabajo y práctica usando estos comandos rápidos:
         </p>
 
-        <div className="space-y-2.5">
+        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
           {shortcuts.map((s, idx) => (
             <div
               key={idx}

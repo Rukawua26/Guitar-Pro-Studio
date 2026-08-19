@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGuitar } from '../../context/GuitarContext';
+import { useGuitar, AppTabType } from '../../context/GuitarContext';
 import {
   BookOpen,
   Radio,
@@ -15,19 +15,27 @@ import {
   CheckCircle,
   Menu,
   X,
-  Volume2
+  Volume2,
+  Brain,
+  Timer,
+  Activity,
+  Sparkles,
+  Disc,
+  Award
 } from 'lucide-react';
 
 interface NavbarProps {
   onOpenProfile: () => void;
   onOpenGuide: () => void;
   onOpenShortcuts: () => void;
+  onOpenCertificate: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfile,
   onOpenGuide,
-  onOpenShortcuts
+  onOpenShortcuts,
+  onOpenCertificate
 }) => {
   const { activeTab, setActiveTab, getTotalProgress, notifications, markNotificationRead, clearNotifications } = useGuitar();
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
@@ -37,44 +45,51 @@ export const Navbar: React.FC<NavbarProps> = ({
   const totalProg = getTotalProgress();
 
   interface NavItem {
-    id: 'course' | 'tuner' | 'recorder' | 'fretboard' | 'metronome' | 'chords' | 'journal';
+    id: AppTabType;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     highlight?: boolean;
+    badge?: string;
   }
 
-  const navItems: NavItem[] = [
+  const primaryNavItems: NavItem[] = [
     { id: 'course', label: 'Curso (7 Niveles)', icon: BookOpen },
-    { id: 'tuner', label: 'Afinador Web', icon: Radio, highlight: true },
-    { id: 'recorder', label: 'Estudio DAW', icon: Mic },
-    { id: 'fretboard', label: 'Diapasón & Modos', icon: Layers },
+    { id: 'tuner', label: 'Afinador DSP', icon: Radio, highlight: true },
+    { id: 'tabplayer', label: 'Tablatura DAW', icon: Music, badge: 'Editor' },
+    { id: 'backingtrack', label: 'Pistas / Jam', icon: Disc, badge: 'Banda' },
+    { id: 'songbook', label: 'Cancionero', icon: BookOpen, badge: 'Auto' },
+    { id: 'trainer', label: 'Entrenador & Oído', icon: Brain, badge: 'Quiz' },
+    { id: 'routine', label: 'Rutina Diaria', icon: Timer },
+    { id: 'rhythm', label: 'Precisión Ritmo', icon: Activity, badge: 'Mic' },
+    { id: 'fretboard', label: 'Diapasón', icon: Layers },
     { id: 'metronome', label: 'Metrónomo', icon: Clock },
+    { id: 'recorder', label: 'Estudio DAW', icon: Mic },
     { id: 'chords', label: 'Acordes', icon: Music },
     { id: 'journal', label: 'Diario', icon: Flame }
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 transition-all">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo Branding */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('course')}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20 font-black text-xl">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20 font-black text-xl flex-shrink-0">
               🎸
             </div>
-            <div>
+            <div className="hidden sm:block">
               <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-amber-200 bg-clip-text text-transparent block">
                 GuitarStudio Pro
               </span>
               <span className="text-[10px] font-mono text-slate-400 block -mt-0.5">
-                Mastery System & Web DSP
+                Mastery System & Web Audio DSP
               </span>
             </div>
           </div>
 
           {/* Desktop Nav Items */}
-          <nav className="hidden lg:flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl shadow-inner">
-            {navItems.map((item) => {
+          <nav className="hidden xl:flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl shadow-inner overflow-x-auto max-w-3xl">
+            {primaryNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
 
@@ -82,7 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                       : item.highlight
@@ -90,15 +105,50 @@ export const Navbar: React.FC<NavbarProps> = ({
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : item.highlight ? 'text-emerald-400' : ''}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-slate-950' : item.highlight ? 'text-emerald-400' : ''}`} />
                   <span>{item.label}</span>
+                  {item.badge && !isActive && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 font-mono text-amber-400 border border-slate-700">
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </nav>
 
+          {/* Medium Screen Nav Strip (Lg) */}
+          <div className="hidden lg:flex xl:hidden items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-2xl">
+            {primaryNavItems.slice(0, 6).map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                    isActive ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{item.label.split(' ')[0]}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Right Action Icons & Profile */}
           <div className="flex items-center gap-2">
+            {/* Official Certificate Button */}
+            <button
+              onClick={onOpenCertificate}
+              title="Ver Certificado Oficial & Reporte"
+              className="px-3 py-1.5 text-xs font-bold text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-colors hidden sm:flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Award className="w-4 h-4 text-amber-400" />
+              <span>Certificado</span>
+            </button>
+
             {/* Quick shortcuts info button */}
             <button
               onClick={onOpenShortcuts}
@@ -179,24 +229,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <div className="hidden sm:flex flex-col text-left">
                 <span className="text-xs font-bold text-slate-200 leading-none">Mi Perfil</span>
-                <span className="text-[10px] font-mono text-amber-400">{totalProg}% Completado</span>
+                <span className="text-[10px] font-mono text-amber-400">{totalProg}% Progreso</span>
               </div>
             </button>
 
             {/* Mobile hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl"
+              className="xl:hidden p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
+        {/* Mobile / Tablet Navigation Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-slate-800 space-y-1.5 animate-fadeIn">
-            {navItems.map((item) => {
+          <div className="xl:hidden py-4 border-t border-slate-800 grid grid-cols-2 gap-2 animate-fadeIn max-h-[75vh] overflow-y-auto">
+            {primaryNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
 
@@ -207,14 +257,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors ${
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors ${
                     isActive
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'text-slate-300 hover:bg-slate-900'
+                      ? 'bg-amber-500 text-slate-950 shadow-md'
+                      : 'text-slate-300 hover:bg-slate-900 bg-slate-950/60 border border-slate-800/80'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <Icon className="w-4 h-4" />
+                  <span className="truncate">{item.label}</span>
                 </button>
               );
             })}
