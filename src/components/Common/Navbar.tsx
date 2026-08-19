@@ -54,14 +54,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const primaryNavItems: NavItem[] = [
     { id: 'course', label: 'Curso (7 Niveles)', icon: BookOpen },
-    { id: 'tuner', label: 'Afinador DSP', icon: Radio, highlight: true },
+    { id: 'skilltree', label: 'Árbol RPG', icon: Award, badge: 'Nodos' },
+    { id: 'listening', label: 'Supera el Compás', icon: Activity, highlight: true, badge: 'Live Mic' },
+    { id: 'tuner', label: 'Afinador DSP', icon: Radio },
     { id: 'tabplayer', label: 'Tablatura DAW', icon: Music, badge: 'Editor' },
     { id: 'backingtrack', label: 'Pistas / Jam', icon: Disc, badge: 'Banda' },
     { id: 'songbook', label: 'Cancionero', icon: BookOpen, badge: 'Auto' },
     { id: 'trainer', label: 'Entrenador & Oído', icon: Brain, badge: 'Quiz' },
     { id: 'routine', label: 'Rutina Diaria', icon: Timer },
     { id: 'rhythm', label: 'Precisión Ritmo', icon: Activity, badge: 'Mic' },
-    { id: 'fretboard', label: 'Diapasón', icon: Layers },
+    { id: 'fretboard', label: 'Diapasón 2D', icon: Layers },
     { id: 'metronome', label: 'Metrónomo', icon: Clock },
     { id: 'recorder', label: 'Estudio DAW', icon: Mic },
     { id: 'chords', label: 'Acordes', icon: Music },

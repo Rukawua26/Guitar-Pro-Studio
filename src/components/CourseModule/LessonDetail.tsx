@@ -5,6 +5,7 @@ import { CHORD_LIBRARY } from '../../data/courseData';
 import { ChordDiagram } from '../Common/ChordDiagram';
 import { OneMinuteSpeedTrainer } from './OneMinuteSpeedTrainer';
 import { InteractiveVideoPlayer } from './InteractiveVideoPlayer';
+import { FocusPracticeMode } from './FocusPracticeMode';
 import {
   CheckCircle,
   Circle,
@@ -19,7 +20,8 @@ import {
   Flame,
   FileCode,
   Share2,
-  Sparkles
+  Sparkles,
+  Maximize2
 } from 'lucide-react';
 
 interface LessonDetailProps {
@@ -29,6 +31,7 @@ interface LessonDetailProps {
 export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
   const { isExerciseDone, toggleExercise, logPractice } = useGuitar();
   const [showSpeedTrainer, setShowSpeedTrainer] = useState<boolean>(false);
+  const [showFocusMode, setShowFocusMode] = useState<boolean>(false);
   const [practiceTime, setPracticeTime] = useState<number>(20);
   const [practiceNotes, setPracticeNotes] = useState<string>('');
   const [isLogging, setIsLogging] = useState<boolean>(false);
@@ -89,6 +92,13 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFocusMode(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md shadow-orange-500/20 cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span>Modo Enfoque</span>
+            </button>
             <button
               onClick={handleShare}
               className="p-2 text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -331,6 +341,11 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
           </div>
         </div>
       </div>
+
+      {/* Focus Practice Mode Modal */}
+      {showFocusMode && (
+        <FocusPracticeMode lesson={lesson} onClose={() => setShowFocusMode(false)} />
+      )}
 
       {/* Speed Trainer Modal */}
       {showSpeedTrainer && (

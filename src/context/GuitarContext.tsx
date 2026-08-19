@@ -13,6 +13,8 @@ export interface NotificationItem {
 
 export type AppTabType =
   | 'course'
+  | 'skilltree'
+  | 'listening'
   | 'tuner'
   | 'tabplayer'
   | 'songbook'

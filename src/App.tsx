@@ -21,6 +21,8 @@ import { FretboardEarTrainer } from './components/TrainerModule/FretboardEarTrai
 import { PracticeRoutinePlanner } from './components/RoutineModule/PracticeRoutinePlanner';
 import { RhythmAssessor } from './components/RhythmModule/RhythmAssessor';
 import { GraduationCertificateModal } from './components/CertificateModule/GraduationCertificateModal';
+import { SkillTreeRPG } from './components/CourseModule/SkillTreeRPG';
+import { SuperaElCompas } from './components/ListeningEngine/SuperaElCompas';
 
 const AppContent: React.FC = () => {
   const { activeTab, setActiveTab } = useGuitar();
@@ -80,6 +82,8 @@ const AppContent: React.FC = () => {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'course' && <CourseDashboard />}
+        {activeTab === 'skilltree' && <SkillTreeRPG />}
+        {activeTab === 'listening' && <SuperaElCompas />}
         {activeTab === 'tuner' && <GuitarTuner />}
         {activeTab === 'tabplayer' && <InteractiveTabPlayer />}
         {activeTab === 'backingtrack' && <BackingTrackStudio />}
