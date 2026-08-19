@@ -21,7 +21,9 @@ import {
   Music,
   Activity,
   ArrowRight,
-  Radio
+  Radio,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -128,6 +130,7 @@ export const SuperaElCompas: React.FC = () => {
   const [selectedChallengeId, setSelectedChallengeId] = useState<string>('knockin');
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isListening, setIsListening] = useState<boolean>(false);
+  const [micError, setMicError] = useState<string | null>(null);
   const [detectedPitch, setDetectedPitch] = useState<{ note: string; octave: number; freq: number; cents: number } | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [bestStreak, setBestStreak] = useState<number>(0);
@@ -166,6 +169,7 @@ export const SuperaElCompas: React.FC = () => {
   }, []);
 
   const startListening = async () => {
+    setMicError(null);
     try {
       let stream: MediaStream | null = null;
       try {
@@ -203,8 +207,19 @@ export const SuperaElCompas: React.FC = () => {
       setIsListening(true);
       yinDetector.resetSmoothing();
       runEvaluationLoop();
-    } catch (err) {
-      alert('No se pudo acceder al micrófono. Recuerda permitir el acceso en el navegador o usa el botón "Avanzar Compás Manualmente" para practicar.');
+    } catch (err: unknown) {
+      console.warn('Supera el Compas audio notice:', err);
+      const errorObj = err as { name?: string; message?: string };
+      const errName = errorObj.name || '';
+      const errMsg = errorObj.message || '';
+
+      if (errName === 'NotFoundError' || errMsg.toLowerCase().includes('not found')) {
+        setMicError('No se encontró micrófono conectado (Requested device not found). Puedes practicar usando el botón "Avanzar Compás Manualmente / Espacio".');
+      } else if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+        setMicError('Permiso de micrófono bloqueado en el navegador. Concede permiso o practica con el botón manual.');
+      } else {
+        setMicError('No se pudo acceder al micrófono del dispositivo. Puedes practicar con el botón manual o tonos de muestra.');
+      }
       setIsListening(false);
     }
   };
@@ -379,6 +394,27 @@ export const SuperaElCompas: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Mic Warning/Info Box */}
+      {micError && (
+        <div className="p-4 bg-amber-950/40 border border-amber-800/60 rounded-2xl flex items-start justify-between gap-3 text-slate-200 animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-amber-300">Aviso de Entrada de Micrófono</h4>
+              <p className="text-xs text-slate-300 mt-0.5">{micError}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setMicError(null)}
+            className="text-slate-400 hover:text-white p-1 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Repertoire Selector Bar */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">

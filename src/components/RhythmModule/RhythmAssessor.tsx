@@ -12,7 +12,9 @@ import {
   Zap,
   Award,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 
 interface TimingHit {
@@ -25,6 +27,7 @@ export const RhythmAssessor: React.FC = () => {
   const [bpm, setBpm] = useState<number>(90);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isListeningMic, setIsListeningMic] = useState<boolean>(false);
+  const [micError, setMicError] = useState<string | null>(null);
   const [hits, setHits] = useState<TimingHit[]>([]);
   const [currentJudgment, setCurrentJudgment] = useState<TimingHit | null>(null);
   const [lastOffsetMs, setLastOffsetMs] = useState<number>(0);
@@ -83,8 +86,20 @@ export const RhythmAssessor: React.FC = () => {
 
         setIsListeningMic(true);
         startOnsetDetection();
-      } catch (err) {
-        alert('No se pudo acceder al micrófono. Por favor permite el acceso en el navegador o utiliza el botón "Pulsar Espacio / Tap" para evaluar tu ritmo.');
+      } catch (err: unknown) {
+        console.warn('Rhythm mic notice:', err);
+        const errorObj = err as { name?: string; message?: string };
+        const errName = errorObj.name || '';
+        const errMsg = errorObj.message || '';
+
+        if (errName === 'NotFoundError' || errMsg.toLowerCase().includes('not found')) {
+          setMicError('No se detectó ningún micrófono conectado. Puedes evaluar tu precisión rítmica usando el botón "Pulsar Espacio / Tap" o la barra espaciadora.');
+        } else if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+          setMicError('Permiso de micrófono denegado en el navegador. Concede permisos o usa la tecla Espacio.');
+        } else {
+          setMicError('No se pudo acceder a la entrada de audio. Usa la tecla Espacio o el botón Tap para la prueba de tempo.');
+        }
+        setIsListeningMic(false);
       }
     }
   };
@@ -256,6 +271,27 @@ export const RhythmAssessor: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Mic Warning Banner */}
+      {micError && (
+        <div className="p-4 bg-amber-950/40 border border-amber-800/60 rounded-2xl flex items-start justify-between gap-3 text-slate-200 animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-amber-300">Aviso de Dispositivo de Audio</h4>
+              <p className="text-xs text-slate-300 mt-0.5">{micError}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setMicError(null)}
+            className="text-slate-400 hover:text-white p-1 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* BPM Adjuster */}
       <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">

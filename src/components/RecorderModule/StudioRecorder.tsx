@@ -14,7 +14,9 @@ import {
   Share2,
   FileAudio,
   Activity,
-  Sliders
+  Sliders,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 
 export const StudioRecorder: React.FC = () => {
@@ -48,20 +50,42 @@ export const StudioRecorder: React.FC = () => {
     };
   }, []);
 
+  const [recorderError, setRecorderError] = useState<string | null>(null);
+
   const startRecording = async () => {
+    setRecorderError(null);
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setRecorderError("Tu navegador no soporta la grabación de audio o no tiene permisos habilitados.");
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          autoGainControl: false,
-          noiseSuppression: false
-        }
-      });
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false
+          }
+        });
+      } catch (firstErr) {
+        // Fallback to basic audio constraint
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      if (!stream) {
+        throw new Error('No se pudo inicializar la entrada de audio.');
+      }
       streamRef.current = stream;
 
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new AudioContextClass();
       audioContextRef.current = audioCtx;
+
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
 
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 1024;
@@ -108,9 +132,17 @@ export const StudioRecorder: React.FC = () => {
       }, 1000);
 
       drawLiveVisualizer();
-    } catch (e) {
-      console.error("Recording error:", e);
-      alert("No se pudo iniciar la grabación. Verifica los permisos de micrófono.");
+    } catch (e: unknown) {
+      const err = e as { name?: string; message?: string };
+      console.warn("Recording warning:", err?.message || err);
+      if (err?.name === 'NotFoundError' || err?.message?.includes('not found')) {
+        setRecorderError("No se detectó ningún micrófono físico conectado al dispositivo. Conecta unos auriculares con micrófono o interfaz de audio.");
+      } else if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        setRecorderError("Permiso de micrófono denegado. Permite el acceso en la barra superior del navegador para grabar.");
+      } else {
+        setRecorderError("No se pudo acceder al dispositivo de captura de audio. Verifica tu hardware.");
+      }
+      setIsRecording(false);
     }
   };
 
@@ -237,6 +269,27 @@ export const StudioRecorder: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Error Alert Box if No Mic or Permission Denied */}
+        {recorderError && (
+          <div className="mb-6 p-4 bg-rose-950/60 border border-rose-800 rounded-2xl flex items-start justify-between gap-3 text-slate-200 animate-fadeIn">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-rose-500/20 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-rose-300">Aviso de Dispositivo de Audio</h4>
+                <p className="text-xs text-slate-300 mt-0.5">{recorderError}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setRecorderError(null)}
+              className="text-slate-400 hover:text-white p-1 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Visualizer Canvas & Time */}
         <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mb-6">

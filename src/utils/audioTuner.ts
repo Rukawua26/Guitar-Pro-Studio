@@ -1,5 +1,5 @@
-// High-Precision Web Audio Pitch Detection using YIN Algorithm + EMA Temporal Smoothing
-// YIN eliminates octave-jumping and overtone interference on bass guitar strings (E2 ~ 82.41Hz)
+// High-Precision Web Audio Pitch Detection using Optimized YIN Algorithm + EMA Smoothing
+// Engineered for acoustic/electric guitars across sample rates (44.1kHz, 48kHz, 96kHz)
 
 const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
@@ -15,7 +15,7 @@ export interface PitchDetectionResult {
 }
 
 /**
- * Calculates the Root Mean Square (RMS) of audio buffer to determine signal energy.
+ * Calculates Root Mean Square (RMS) of audio buffer to determine signal energy.
  */
 export function calculateRMS(buffer: Float32Array): number {
   let sum = 0;
@@ -26,25 +26,15 @@ export function calculateRMS(buffer: Float32Array): number {
 }
 
 /**
- * Implementation of the YIN Pitch Detection Algorithm
- * Reference: De Cheveigné, A., & Kawahara, H. (2002). "YIN, a fundamental frequency estimator for speech and music."
- * J. Acoust. Soc. Am. 111(4), 1917-1930.
- *
- * Steps:
- * 1. Difference function d_t(tau)
- * 2. Cumulative mean normalized difference function d'_t(tau)
- * 3. Absolute thresholding
- * 4. Parabolic interpolation for sub-sample accuracy
+ * Optimized Implementation of YIN Pitch Detection Algorithm with Guitar Range Constraints
  */
 export class YinDetector {
   private threshold: number;
-  private bufferSize: number;
   private yinBuffer: Float32Array;
   private smoothedFreq: number = -1;
   private smoothingAlpha: number = 0.35; // Exponential Moving Average (EMA) factor
 
-  constructor(bufferSize: number = 2048, threshold: number = 0.12) {
-    this.bufferSize = bufferSize;
+  constructor(bufferSize: number = 4096, threshold: number = 0.15) {
     this.threshold = threshold;
     this.yinBuffer = new Float32Array(Math.floor(bufferSize / 2));
   }
@@ -58,17 +48,20 @@ export class YinDetector {
   }
 
   /**
-   * Detects fundamental frequency using YIN algorithm
+   * Detects fundamental frequency using optimized YIN algorithm
+   * @param buffer Time domain audio data
+   * @param sampleRate AudioContext sample rate (44100, 48000, 96000, etc.)
+   * @param minRmsThreshold Noise gate threshold
    */
   public detectPitch(
     buffer: Float32Array,
     sampleRate: number,
-    minRmsThreshold: number = 0.008
+    minRmsThreshold: number = 0.003
   ): { frequency: number; probability: number } | null {
     const rms = calculateRMS(buffer);
     if (rms < minRmsThreshold) {
       this.resetSmoothing();
-      return null; // Silent or noise gate active
+      return null; // Noise gate active
     }
 
     const halfBufferSize = Math.floor(buffer.length / 2);
@@ -76,9 +69,14 @@ export class YinDetector {
       this.yinBuffer = new Float32Array(halfBufferSize);
     }
 
+    // Tau search range bounded by guitar frequency range (50 Hz to 1400 Hz)
+    // E.g. at 48kHz: tauMin = 48000/1400 ~= 34 samples, tauMax = 48000/50 ~= 960 samples
+    const tauMin = Math.max(2, Math.floor(sampleRate / 1400));
+    const tauMax = Math.min(halfBufferSize - 1, Math.floor(sampleRate / 50));
+
     // Step 1: Difference Function
     // d_t(tau) = sum_j (x_j - x_{j+tau})^2
-    for (let tau = 0; tau < halfBufferSize; tau++) {
+    for (let tau = 0; tau <= tauMax; tau++) {
       let sum = 0;
       for (let j = 0; j < halfBufferSize; j++) {
         const delta = buffer[j] - buffer[j + tau];
@@ -91,7 +89,7 @@ export class YinDetector {
     // d'_t(tau) = 1 if tau=0; d_t(tau) / ((1/tau) * sum_{j=1}^tau d_t(j))
     this.yinBuffer[0] = 1;
     let runningSum = 0;
-    for (let tau = 1; tau < halfBufferSize; tau++) {
+    for (let tau = 1; tau <= tauMax; tau++) {
       runningSum += this.yinBuffer[tau];
       if (runningSum > 0) {
         this.yinBuffer[tau] = (this.yinBuffer[tau] * tau) / runningSum;
@@ -102,9 +100,9 @@ export class YinDetector {
 
     // Step 3: Absolute Thresholding
     let tauEstimate = -1;
-    for (let tau = 2; tau < halfBufferSize; tau++) {
+    for (let tau = tauMin; tau <= tauMax; tau++) {
       if (this.yinBuffer[tau] < this.threshold) {
-        while (tau + 1 < halfBufferSize && this.yinBuffer[tau + 1] < this.yinBuffer[tau]) {
+        while (tau + 1 <= tauMax && this.yinBuffer[tau + 1] < this.yinBuffer[tau]) {
           tau++;
         }
         tauEstimate = tau;
@@ -112,17 +110,17 @@ export class YinDetector {
       }
     }
 
-    // Fallback: If no value is under threshold, find global minimum
+    // Fallback: If no value is under threshold, find global minimum in tau range
     if (tauEstimate === -1) {
       let minVal = 1000;
-      for (let tau = 2; tau < halfBufferSize; tau++) {
+      for (let tau = tauMin; tau <= tauMax; tau++) {
         if (this.yinBuffer[tau] < minVal) {
           minVal = this.yinBuffer[tau];
           tauEstimate = tau;
         }
       }
-      if (minVal > 0.4) {
-        // High aperiodicity / noise
+      if (minVal > 0.45) {
+        // Signal is aperiodic or noisy
         return null;
       }
     }
@@ -130,7 +128,7 @@ export class YinDetector {
     // Step 4: Parabolic Interpolation for sub-sample accuracy
     let betterTau: number = tauEstimate;
     const x0 = tauEstimate < 1 ? tauEstimate : tauEstimate - 1;
-    const x2 = tauEstimate + 1 < halfBufferSize ? tauEstimate + 1 : tauEstimate;
+    const x2 = tauEstimate + 1 <= tauMax ? tauEstimate + 1 : tauEstimate;
 
     if (x0 !== tauEstimate && x2 !== tauEstimate) {
       const s0 = this.yinBuffer[x0];
@@ -145,16 +143,16 @@ export class YinDetector {
     if (betterTau <= 0) return null;
 
     const rawFreq = sampleRate / betterTau;
-    const probability = 1 - (this.yinBuffer[tauEstimate] || 0);
+    const probability = Math.max(0, 1 - (this.yinBuffer[tauEstimate] || 0));
 
-    // Range filter for guitar fundamental pitch (E2 ~ 82Hz down to Drop A 55Hz up to High E frets ~ 1200Hz)
-    if (rawFreq < 55 || rawFreq > 1200) {
+    // Bounds check
+    if (rawFreq < 50 || rawFreq > 1400) {
       return null;
     }
 
-    // Apply EMA (Exponential Moving Average) Smoothing to stabilize needle & cents display
+    // Apply EMA Smoothing to stabilize pitch readings against transient pick clicks
     let finalFreq = rawFreq;
-    if (this.smoothedFreq > 0 && Math.abs(rawFreq - this.smoothedFreq) < 25) {
+    if (this.smoothedFreq > 0 && Math.abs(rawFreq - this.smoothedFreq) < 30) {
       finalFreq = this.smoothingAlpha * rawFreq + (1 - this.smoothingAlpha) * this.smoothedFreq;
     }
     this.smoothedFreq = finalFreq;
@@ -166,8 +164,8 @@ export class YinDetector {
   }
 }
 
-// Global detector instance
-export const yinDetector = new YinDetector(2048, 0.12);
+// Global detector instance with 4096 buffer size support
+export const yinDetector = new YinDetector(4096, 0.15);
 
 /**
  * Calculates MIDI note, note name, octave and cent offset from frequency given A4 calibration.

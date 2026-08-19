@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { STANDARD_TUNING_NOTES, TUNING_PRESETS } from '../../data/courseData';
+import { TUNING_PRESETS } from '../../data/courseData';
 import { yinDetector, getPitchInfo, PitchDetectionResult } from '../../utils/audioTuner';
 import { audioEngine } from '../../utils/audioSynthesizer';
 import {
@@ -10,20 +10,26 @@ import {
   Sliders,
   Music,
   Radio,
-  VolumeX,
   Sparkles,
-  Zap,
   Activity,
   ArrowUp,
   ArrowDown,
   RotateCcw,
-  HelpCircle,
   Play,
   Pause,
-  Info,
   ShieldAlert,
-  Compass
+  Lock,
+  Unlock,
+  SlidersHorizontal,
+  VolumeX
 } from 'lucide-react';
+
+const A4_CALIBRATIONS = [
+  { value: 440, label: '440 Hz (Estándar ISO)' },
+  { value: 432, label: '432 Hz (Tono Filosófico / Verdi)' },
+  { value: 442, label: '442 Hz (Concierto / Orquesta)' },
+  { value: 444, label: '444 Hz (Brillante)' }
+];
 
 export const GuitarTuner: React.FC = () => {
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -31,7 +37,8 @@ export const GuitarTuner: React.FC = () => {
   const [currentRms, setCurrentRms] = useState<number>(0);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('standard');
   const [a4Freq, setA4Freq] = useState<number>(440);
-  const [noiseGate, setNoiseGate] = useState<number>(0.008);
+  const [noiseGate, setNoiseGate] = useState<number>(0.003); // Optimized sensitive threshold
+  const [lockedStringIndex, setLockedStringIndex] = useState<number | null>(null);
   const [activeRefNote, setActiveRefNote] = useState<string | null>(null);
   const [micError, setMicError] = useState<{ type: string; title: string; message: string; hint: string } | null>(null);
   const [autoTargetString, setAutoTargetString] = useState<number | null>(null);
@@ -48,7 +55,29 @@ export const GuitarTuner: React.FC = () => {
   const needleRef = useRef<SVGGElement | null>(null);
   const droneIntervalRef = useRef<number | null>(null);
 
+  // Sync refs to avoid stale closures in requestAnimationFrame loop
+  const presetRef = useRef(TUNING_PRESETS[0]);
+  const a4FreqRef = useRef(a4Freq);
+  const noiseGateRef = useRef(noiseGate);
+  const lockedStringIndexRef = useRef<number | null>(lockedStringIndex);
+
   const currentPreset = TUNING_PRESETS.find((p) => p.id === selectedPresetId) || TUNING_PRESETS[0];
+
+  useEffect(() => {
+    presetRef.current = currentPreset;
+  }, [currentPreset]);
+
+  useEffect(() => {
+    a4FreqRef.current = a4Freq;
+  }, [a4Freq]);
+
+  useEffect(() => {
+    noiseGateRef.current = noiseGate;
+  }, [noiseGate]);
+
+  useEffect(() => {
+    lockedStringIndexRef.current = lockedStringIndex;
+  }, [lockedStringIndex]);
 
   const stopAudio = useCallback(() => {
     if (animationFrameRef.current) {
@@ -86,7 +115,7 @@ export const GuitarTuner: React.FC = () => {
         type: 'Unsupported',
         title: 'Navegador no compatible con captura de audio',
         message: 'Tu navegador actual no tiene activada la API MediaDevices.',
-        hint: 'Usa una versión moderna de Google Chrome, Firefox, Edge o Safari, o usa el modo "Afinar de Oído / Generador de Tono" a la derecha.'
+        hint: 'Usa Google Chrome, Firefox, Edge o Safari, o utiliza el modo de "Afinar de Oído" a la derecha.'
       });
       return;
     }
@@ -94,7 +123,7 @@ export const GuitarTuner: React.FC = () => {
     try {
       let stream: MediaStream | null = null;
       try {
-        // First try optimal raw studio constraints
+        // Attempt clean direct audio input
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: false,
@@ -103,13 +132,12 @@ export const GuitarTuner: React.FC = () => {
           }
         });
       } catch (firstErr) {
-        console.warn('Advanced constraints rejected, attempting basic fallback audio...', firstErr);
-        // Fallback to basic audio constraint
+        console.warn('Direct studio constraints not available, falling back to standard audio...', firstErr);
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
 
       if (!stream) {
-        throw new Error('No se pudo inicializar el flujo de audio.');
+        throw new Error('No se pudo inicializar la señal del micrófono.');
       }
 
       streamRef.current = stream;
@@ -124,48 +152,67 @@ export const GuitarTuner: React.FC = () => {
         await audioCtx.resume();
       }
 
+      // DSP Chain: Mic Source -> Highpass (60Hz) -> Lowpass (1300Hz) -> Analyser (4096 FFT)
+      const source = audioCtx.createMediaStreamSource(stream);
+
+      const highpassFilter = audioCtx.createBiquadFilter();
+      highpassFilter.type = 'highpass';
+      highpassFilter.frequency.value = 60; // Filter out desk bumps & AC rumble below 60 Hz
+
+      const lowpassFilter = audioCtx.createBiquadFilter();
+      lowpassFilter.type = 'lowpass';
+      lowpassFilter.frequency.value = 1300; // Filter out room hiss & ambient high-frequency noise
+
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
+      analyser.fftSize = 4096; // 4096 ensures robust low-E detection (down to 50Hz) even on 96kHz cards
       analyserRef.current = analyser;
 
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
+      // Connect DSP chain
+      source.connect(highpassFilter);
+      highpassFilter.connect(lowpassFilter);
+      lowpassFilter.connect(analyser);
 
       setIsListening(true);
       yinDetector.resetSmoothing();
       runPitchDetection();
     } catch (err: unknown) {
-      console.error('Microphone capture error:', err);
+      console.warn('Microphone capture notice:', err);
       const errorObj = err as { name?: string; message?: string };
       const errName = errorObj.name || '';
+      const errMsg = errorObj.message || '';
 
       if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
         setMicError({
           type: 'NotAllowed',
           title: 'Permiso de micrófono bloqueado en el navegador',
-          message: 'El navegador ha bloqueado el acceso al micrófono para esta página.',
-          hint: 'Haz clic en el icono de candado 🔒 o configuración en la barra de direcciones superior del navegador y cambia "Micrófono" a "Permitir", luego pulsa "Reintentar Conexión".'
+          message: 'El navegador tiene bloqueado el acceso al micrófono para este sitio.',
+          hint: 'Haz clic en el candado 🔒 de la barra de direcciones de tu navegador y activa "Micrófono: Permitir", luego haz clic en "Reintentar Conexión".'
         });
-      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+      } else if (
+        errName === 'NotFoundError' ||
+        errName === 'DevicesNotFoundError' ||
+        errMsg.toLowerCase().includes('not found') ||
+        errMsg.toLowerCase().includes('requested device')
+      ) {
         setMicError({
           type: 'NotFound',
           title: 'No se detectó ningún micrófono conectado',
-          message: 'No se encontró ningún hardware de entrada de audio disponible en el sistema.',
-          hint: 'Conecta tus auriculares, interfaz de audio USB o micrófono interno, o utiliza el modo de "Afinar de Oído con Tonos de Referencia".'
+          message: 'No se encontró hardware de entrada de audio en este equipo (Requested device not found).',
+          hint: 'Conecta unos auriculares con micrófono, interfaz USB o utiliza el modo "Afinar de Oído / Secuencia Manos Libres" en el panel derecho.'
         });
       } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
         setMicError({
           type: 'NotReadable',
           title: 'El micrófono está ocupado por otra aplicación',
-          message: 'Otra pestaña o aplicación (Zoom, Discord, DAW) está usando el micrófono de forma exclusiva.',
+          message: 'Otra aplicación (Zoom, Discord, DAW o navegador) tiene tomado el micrófono de forma exclusiva.',
           hint: 'Cierra las otras aplicaciones que usen audio y pulsa "Reintentar Conexión".'
         });
       } else {
         setMicError({
           type: 'Generic',
-          title: 'Acceso al micrófono restringido',
-          message: errorObj.message || 'No se pudo abrir el canal de audio del sistema.',
-          hint: 'Verifica los permisos del navegador o afina con los tonos enriquecidos del panel derecho.'
+          title: 'Acceso al micrófono no disponible',
+          message: errMsg || 'No se pudo abrir el canal de audio del sistema.',
+          hint: 'Verifica los permisos del navegador o afina con los tonos sintetizados del panel derecho.'
         });
       }
 
@@ -173,7 +220,7 @@ export const GuitarTuner: React.FC = () => {
     }
   };
 
-  // Simulated Test Pluck to let the user test the DSP needle anytime even without hardware
+  // Simulated Test Pluck to let the user verify the visualizer and DSP anytime
   const simulatePluckTest = (freq: number, centsOffset: number = 0) => {
     setIsSimulatingDSP(true);
     setMicError(null);
@@ -181,7 +228,7 @@ export const GuitarTuner: React.FC = () => {
     const testFreq = freq * Math.pow(2, centsOffset / 1200);
     audioEngine.playGuitarPluck(testFreq, 2.5, 0.9);
 
-    const info = getPitchInfo(testFreq, a4Freq);
+    const info = getPitchInfo(testFreq, a4FreqRef.current);
     if (info) {
       setPitchData({
         ...info,
@@ -194,9 +241,10 @@ export const GuitarTuner: React.FC = () => {
         needleRef.current.style.transform = `rotate3d(0, 0, 1, ${angle}deg)`;
       }
 
+      const activePreset = presetRef.current;
       let closestIndex = 0;
       let minDiff = Infinity;
-      currentPreset.notes.forEach((str, idx) => {
+      activePreset.notes.forEach((str, idx) => {
         const diff = Math.abs(str.freq - testFreq);
         if (diff < minDiff) {
           minDiff = diff;
@@ -232,26 +280,31 @@ export const GuitarTuner: React.FC = () => {
       const rms = Math.sqrt(sum / timeBuffer.length);
       setCurrentRms(rms);
 
+      const currentGate = noiseGateRef.current;
+      const currentA4 = a4FreqRef.current;
+      const currentActivePreset = presetRef.current;
+      const lockedIdx = lockedStringIndexRef.current;
+
       // 2. Render live futuristic oscilloscope + FFT glow on canvas
       if (canvas && ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw glowing frequency bars in background
+        // Draw glowing frequency bars
         const barWidth = canvas.width / 64;
         for (let i = 0; i < 64; i++) {
           const val = freqBuffer[i * 2] / 255;
-          const barHeight = val * canvas.height * 0.7;
+          const barHeight = val * canvas.height * 0.75;
           ctx.fillStyle =
-            rms >= noiseGate
-              ? `rgba(16, 185, 129, ${0.15 + val * 0.3})`
-              : 'rgba(51, 65, 85, 0.15)';
+            rms >= currentGate
+              ? `rgba(16, 185, 129, ${0.15 + val * 0.4})`
+              : 'rgba(51, 65, 85, 0.2)';
           ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
         }
 
         // Draw foreground waveform line
         ctx.lineWidth = 2.5;
-        ctx.strokeStyle = rms >= noiseGate ? '#34d399' : '#475569';
-        ctx.shadowColor = rms >= noiseGate ? '#10b981' : 'transparent';
+        ctx.strokeStyle = rms >= currentGate ? '#34d399' : '#475569';
+        ctx.shadowColor = rms >= currentGate ? '#10b981' : 'transparent';
         ctx.shadowBlur = 6;
         ctx.beginPath();
 
@@ -275,11 +328,41 @@ export const GuitarTuner: React.FC = () => {
       const result = yinDetector.detectPitch(
         timeBuffer,
         audioCtxRef.current!.sampleRate,
-        noiseGate
+        currentGate
       );
 
       if (result && result.frequency > 0) {
-        const info = getPitchInfo(result.frequency, a4Freq);
+        let info = getPitchInfo(result.frequency, currentA4);
+
+        // If user locked a specific string (e.g. 6ª E2), calculate cents relative to THAT string
+        if (lockedIdx !== null && currentActivePreset.notes[lockedIdx]) {
+          const lockedTarget = currentActivePreset.notes[lockedIdx];
+          const centsAgainstLocked = Math.round(
+            1200 * Math.log2(result.frequency / lockedTarget.freq)
+          );
+          if (info) {
+            info = {
+              ...info,
+              cents: centsAgainstLocked,
+              targetFrequency: Number(lockedTarget.freq.toFixed(2)),
+              inTune: Math.abs(centsAgainstLocked) <= 5
+            };
+          }
+          setAutoTargetString(lockedIdx);
+        } else if (info) {
+          // Auto-Chromatic: Match closest preset string
+          let closestIndex = 0;
+          let minDiff = Infinity;
+          currentActivePreset.notes.forEach((str, idx) => {
+            const diff = Math.abs(str.freq - info!.frequency);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestIndex = idx;
+            }
+          });
+          setAutoTargetString(closestIndex);
+        }
+
         if (info) {
           setPitchData(info);
 
@@ -290,18 +373,6 @@ export const GuitarTuner: React.FC = () => {
             needleRef.current.style.transform = `rotate3d(0, 0, 1, ${angle}deg)`;
           }
 
-          // Match closest preset string
-          let closestIndex = 0;
-          let minDiff = Infinity;
-          currentPreset.notes.forEach((str, idx) => {
-            const diff = Math.abs(str.freq - info.frequency);
-            if (diff < minDiff) {
-              minDiff = diff;
-              closestIndex = idx;
-            }
-          });
-          setAutoTargetString(closestIndex);
-
           // Play subtle sparkle chime if newly in-tune
           if (info.inTune && chimePlayedForNote !== info.note + info.octave) {
             setChimePlayedForNote(info.note + info.octave);
@@ -310,7 +381,7 @@ export const GuitarTuner: React.FC = () => {
         }
       } else {
         // Signal decayed or below noise gate
-        if (needleRef.current && rms < noiseGate * 0.7) {
+        if (needleRef.current && rms < currentGate * 0.7) {
           needleRef.current.style.transform = 'rotate3d(0, 0, 1, 0deg)';
         }
       }
@@ -361,6 +432,10 @@ export const GuitarTuner: React.FC = () => {
   const isInTune = pitchData ? Math.abs(pitchData.cents) <= 5 : false;
   const isNear = pitchData ? Math.abs(pitchData.cents) <= 15 && !isInTune : false;
 
+  // Calculate VU meter percentage (0% to 100%)
+  const vuPercentage = Math.min(100, Math.round((currentRms / 0.04) * 100));
+  const gatePercentage = Math.min(100, Math.round((noiseGate / 0.04) * 100));
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Top Header & Preset Bar */}
@@ -377,13 +452,29 @@ export const GuitarTuner: React.FC = () => {
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Detección de Tono por Algoritmo YIN con Supresión de Ruido y Modo de Referencia Acústica.
+              Filtro Pasa-Altos (60Hz) + Pasa-Bajos (1.3kHz) + Detección YIN de Alta Fidelidad.
             </p>
           </div>
         </div>
 
-        {/* Master Preset Controls */}
+        {/* Master Preset & Calibration Controls */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* A4 Calibration Selector */}
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2 text-xs text-slate-300">
+            <span className="text-amber-400 font-bold font-mono">A4:</span>
+            <select
+              value={a4Freq}
+              onChange={(e) => setA4Freq(Number(e.target.value))}
+              className="bg-transparent text-slate-200 font-semibold outline-none cursor-pointer"
+            >
+              {A4_CALIBRATIONS.map((cal) => (
+                <option key={cal.value} value={cal.value} className="bg-slate-900">
+                  {cal.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Preset Selector */}
           <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3.5 py-2 text-xs text-slate-300">
             <Music className="w-4 h-4 text-amber-400" />
@@ -391,6 +482,7 @@ export const GuitarTuner: React.FC = () => {
               value={selectedPresetId}
               onChange={(e) => {
                 setSelectedPresetId(e.target.value);
+                setLockedStringIndex(null);
                 setAutoTargetString(null);
               }}
               className="bg-transparent text-slate-200 font-semibold outline-none cursor-pointer"
@@ -481,11 +573,23 @@ export const GuitarTuner: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Analog Arc Meter & Note Centerpiece (8 Cols) */}
         <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center justify-between relative overflow-hidden">
-          {/* Header Status Line */}
+          {/* Header Status Line & Mode Toggle */}
           <div className="w-full flex items-center justify-between mb-4">
-            <span className="text-xs font-mono font-bold text-amber-400 tracking-wider">
-              {currentPreset.name}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-amber-400 tracking-wider">
+                {currentPreset.name}
+              </span>
+              {lockedStringIndex !== null ? (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Fijada: {currentPreset.notes[lockedStringIndex].stringName}
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1">
+                  <Unlock className="w-3 h-3" /> Modo Auto (Cromático)
+                </span>
+              )}
+            </div>
+
             <div className="flex items-center gap-2">
               <span
                 className={`w-2.5 h-2.5 rounded-full ${
@@ -696,8 +800,15 @@ export const GuitarTuner: React.FC = () => {
 
           {/* Live Waveform & Spectrum Visualizer */}
           <div className="w-full mt-4">
-            <span className="text-[10px] uppercase font-mono text-slate-500 font-bold block mb-1.5 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-emerald-400" /> Espectrograma & Forma de Onda en Tiempo Real
+            <span className="text-[10px] uppercase font-mono text-slate-500 font-bold mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-emerald-400" /> Espectrograma & Forma de Onda en Tiempo Real
+              </span>
+              {isListening && (
+                <span className="text-emerald-400 font-bold">
+                  {currentRms >= noiseGate ? 'Nivel Óptimo' : 'Señal Débil / Silencio'}
+                </span>
+              )}
             </span>
             <div className="h-14 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner">
               <canvas ref={canvasRef} width={640} height={56} className="w-full h-full block" />
@@ -705,37 +816,49 @@ export const GuitarTuner: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Reference Tuning Pegs & RMS Gate (4 Cols) */}
+        {/* Right Column: Reference Tuning Pegs, String Lock & Sensitive Gate (4 Cols) */}
         <div className="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between mb-3.5">
               <h3 className="font-extrabold text-slate-200 text-sm flex items-center gap-2">
                 <Music className="w-4 h-4 text-amber-400" />
-                <span>Cuerdas del Preset</span>
+                <span>Cuerdas ({currentPreset.name})</span>
               </h3>
-              <button
-                onClick={toggleHandsFreeDrone}
-                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
-                  isToneDronePlaying
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md animate-pulse'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {isToneDronePlaying ? (
-                  <>
-                    <Pause className="w-3 h-3" /> Detener Ciclo
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3 h-3" /> Secuencia Manos Libres
-                  </>
+              <div className="flex items-center gap-2">
+                {lockedStringIndex !== null && (
+                  <button
+                    onClick={() => setLockedStringIndex(null)}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-800 text-purple-300 border border-purple-500/40 hover:bg-purple-900/40 cursor-pointer"
+                    title="Desbloquear modo automático"
+                  >
+                    Desbloquear
+                  </button>
                 )}
-              </button>
+                <button
+                  onClick={toggleHandsFreeDrone}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                    isToneDronePlaying
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md animate-pulse'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {isToneDronePlaying ? (
+                    <>
+                      <Pause className="w-3 h-3" /> Detener Ciclo
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3 h-3" /> Manos Libres
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Individual Reference Strings */}
+            {/* Individual Reference Strings with Lock / Listen Actions */}
             <div className="space-y-2.5">
               {currentPreset.notes.map((str, index) => {
+                const isLocked = lockedStringIndex === index;
                 const isAutoTarget = autoTargetString === index && (isListening || isSimulatingDSP);
                 const isPlaying = activeRefNote === str.stringName || (isToneDronePlaying && droneStringIdx === index);
 
@@ -743,11 +866,19 @@ export const GuitarTuner: React.FC = () => {
                   <div
                     key={index}
                     onClick={() => {
+                      // Clicking sets locked target string or toggles it
+                      if (lockedStringIndex === index) {
+                        setLockedStringIndex(null);
+                      } else {
+                        setLockedStringIndex(index);
+                      }
                       handlePlayRefNote(str.freq, str.stringName);
                       simulatePluckTest(str.freq, 0);
                     }}
                     className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer group ${
-                      isPlaying
+                      isLocked
+                        ? 'bg-purple-950/40 border-purple-500 shadow-lg shadow-purple-500/20 ring-2 ring-purple-500/40'
+                        : isPlaying
                         ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-lg shadow-amber-500/20'
                         : isAutoTarget
                         ? 'bg-slate-850 border-emerald-500 shadow-md ring-2 ring-emerald-500/40'
@@ -757,7 +888,9 @@ export const GuitarTuner: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm transition-all ${
-                          isAutoTarget
+                          isLocked
+                            ? 'bg-purple-500 text-slate-950 shadow-md shadow-purple-500/30'
+                            : isAutoTarget
                             ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30'
                             : 'bg-slate-900 text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950'
                         }`}
@@ -765,8 +898,9 @@ export const GuitarTuner: React.FC = () => {
                         {str.note}
                       </div>
                       <div>
-                        <div className="font-bold text-sm text-slate-100">
-                          {str.stringName}
+                        <div className="font-bold text-sm text-slate-100 flex items-center gap-1.5">
+                          <span>{str.stringName}</span>
+                          {isLocked && <Lock className="w-3 h-3 text-purple-400" />}
                         </div>
                         <div className="text-xs text-slate-400 font-mono">
                           {str.freq.toFixed(2)} Hz
@@ -807,11 +941,41 @@ export const GuitarTuner: React.FC = () => {
             </div>
           </div>
 
-          {/* Noise Gate & Signal Settings */}
+          {/* Live Mic VU Level & Noise Gate Setting */}
           <div className="pt-4 border-t border-slate-800/90 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
+            {/* Realtime VU Meter Bar with Gate Marker */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span className="flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-emerald-400" /> Nivel de Entrada Micrófono
+                </span>
+                <span className={currentRms >= noiseGate ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                  {(currentRms * 1000).toFixed(1)} mV
+                </span>
+              </div>
+              <div className="relative h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                {/* Live RMS VU Bar */}
+                <div
+                  className={`h-full transition-all duration-75 ${
+                    currentRms >= noiseGate
+                      ? 'bg-gradient-to-r from-emerald-500 to-amber-400 shadow-sm shadow-emerald-500'
+                      : 'bg-slate-700'
+                  }`}
+                  style={{ width: `${vuPercentage}%` }}
+                />
+                {/* Noise Gate Threshold Marker */}
+                <div
+                  className="absolute top-0 bottom-0 w-1 bg-amber-400 z-10"
+                  style={{ left: `${gatePercentage}%` }}
+                  title="Umbral de Puerta de Ruido"
+                />
+              </div>
+            </div>
+
+            {/* Slider */}
+            <div className="flex items-center justify-between text-xs text-slate-300 font-bold pt-1">
               <span className="flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-amber-400" /> Puerta de Ruido (RMS Gate)
+                <Sliders className="w-3.5 h-3.5 text-amber-400" /> Sensibilidad / Puerta de Ruido
               </span>
               <span className="font-mono text-amber-400">
                 {(noiseGate * 1000).toFixed(0)} mV
@@ -819,15 +983,15 @@ export const GuitarTuner: React.FC = () => {
             </div>
             <input
               type="range"
-              min="0.002"
-              max="0.035"
-              step="0.002"
+              min="0.001"
+              max="0.020"
+              step="0.001"
               value={noiseGate}
               onChange={(e) => setNoiseGate(Number(e.target.value))}
               className="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer"
             />
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Filtra el ruido ambiente para capturar con mayor precisión el ataque de tu guitarra.
+              Ajusta el control deslizante hacia la izquierda si tocas suavemente o tu micrófono tiene baja ganancia.
             </p>
           </div>
         </div>
