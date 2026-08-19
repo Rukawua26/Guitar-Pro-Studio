@@ -19,11 +19,24 @@
   }
 }
 
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), inset 0 0 15px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.6), inset 0 0 25px rgba(16, 185, 129, 0.4);
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Custom smooth dark scrollbars */
+.animate-pulseGlow {
+  animation: pulseGlow 1.8s infinite ease-in-out;
+}
+
+/* Custom smooth studio scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

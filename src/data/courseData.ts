@@ -6,7 +6,7 @@ export const COURSE_LESSONS: Lesson[] = [
     nivel: 1,
     categoria: "Principiante",
     titulo: "Cimientos de la Ergonomía e Iniciación a la Armonía Abierta",
-    teoria: "Adopción de la postura ergonómica (clásica con elevador de pie o folclórica sobre muslo derecho) para prevenir lesiones y maximizar movilidad. Introducción a los acordes abiertos fundamentales (Re, La, Mi mayor) y mecánica de independencia lineal de dedos.",
+    teoria: "Adopción de la postura ergonómica (clásica con elevador de pie o folclórica sobre muslo derecho) para prevenir lesiones y maximizar movilidad. Introducción a los acordes abiertos fundamentales (Re, La, Mi mayor) y mecánica de independencia lineal de dedos con púa alternada estricta.",
     ejercicios: [
       "La Araña Inicial: Digitación en trastes 5-8 de sexta a primera cuerda con púa alternada constante.",
       "Formación estricta de acordes abiertos: Re Mayor (D), La Mayor (A) y Mi Mayor (E).",
@@ -14,6 +14,13 @@ export const COURSE_LESSONS: Lesson[] = [
     ],
     cancion_referencia: "Progresiones de Tres Acordes (A, D, E) / Iniciación al Cambio de Bloque",
     canal_youtube: "JustinGuitar / Marty Music",
+    youtubeVideoId: "kJvWq6q3sEQ", // Dedicated Guitar Lesson Video
+    videoTimestamps: [
+      { label: "0:00 - Postura & Pulgar Centrado", seconds: 0, description: "Ergonomía de brazo y ángulo de 90° de nudillos" },
+      { label: "1:45 - Digitación de Re Mayor (D)", seconds: 105, description: "Colocación de dedos 1, 2 y 3 cerca del traste" },
+      { label: "3:30 - Acordes La (A) y Mi (E)", seconds: 210, description: "Cambios en bloque y optimización motriz" },
+      { label: "5:15 - Entrenador de 1 Minuto", seconds: 315, description: "Práctica con metrónomo y conteo limpio" }
+    ],
     chords: ["D", "A", "E"],
     bpmObjetivo: 60,
     puntosClave: [
@@ -44,6 +51,13 @@ E|-----------------------------------------|
     ],
     cancion_referencia: "Knockin' on Heaven's Door - Guns N' Roses / Eric Clapton (G, D, Am, C) / Wildflowers - Tom Petty (con Capo)",
     canal_youtube: "Marty Music / JustinGuitar",
+    youtubeVideoId: "g4uS1_f1t0g",
+    videoTimestamps: [
+      { label: "0:00 - Péndulo Rítmico de Brazo", seconds: 0, description: "Movimiento constante del antebrazo a pulso" },
+      { label: "2:10 - El Rasgueo Universal", seconds: 130, description: "Patrón ↓ ↓↑ (↓)↑ ↓↑ desglosado" },
+      { label: "4:20 - Transición Sol (G) ↔ Do (C)", seconds: 260, description: "Uso del anular y meñique como pivote" },
+      { label: "6:40 - Canción de Demostración", seconds: 400, description: "Knockin' on Heaven's Door en contexto" }
+    ],
     chords: ["G", "C", "Em", "Am", "Dm"],
     bpmObjetivo: 68,
     puntosClave: [
@@ -62,7 +76,7 @@ Golpe       Golpe Sub   Fant. Sub   Golpe Sub`
     nivel: 3,
     categoria: "Intermedio",
     titulo: "El Sistema CAGED y la Arquitectura de los Acordes de Cejilla",
-    teoria: "Mapeo del diapasón mediante las 5 formas abiertas (C-A-G-E-D) desplazables. Técnica de cejilla mediante rotación radial del índice y presión en pinza del pulgar centrado verticalmente.",
+    teoria: "Mapeo del diapasón mediante las 5 formas abiertas (C-A-G-E-D) desplazables. Técnica de cejilla mediante rotación radial del índice y presión en pinza del pulgar centrado verticalmente sin tensionar muñeca.",
     ejercicios: [
       "Aislador de Presión de Cejilla: Evaluación de sonoridad limpia de 1ª a 6ª cuerda con solo el índice en traste 5.",
       "Construcción del acorde de Fa Mayor (F) desde la forma de Mi y Si menor (Bm) desde la forma de La.",
@@ -70,6 +84,13 @@ Golpe       Golpe Sub   Fant. Sub   Golpe Sub`
     ],
     cancion_referencia: "Sultans of Swing - Dire Straits (Dm, C, Bb, A, F) / Wish You Were Here - Pink Floyd",
     canal_youtube: "Marty Music / Paul Davids",
+    youtubeVideoId: "o5Vp-s-M-mQ",
+    videoTimestamps: [
+      { label: "0:00 - Rotación del Índice en Cejilla", seconds: 0, description: "Apoyo con el borde óseo lateral del dedo" },
+      { label: "2:15 - El Acorde de Fa Mayor (F)", seconds: 135, description: "Distribución del peso corporal contra la guitarra" },
+      { label: "4:30 - Si menor (Bm) en Traste 2", seconds: 270, description: "Cejilla de 5 cuerdas desde la raíz de La" },
+      { label: "7:00 - El Mapeo CAGED Completo", seconds: 420, description: "Conectar las 5 formas a lo largo del diapasón" }
+    ],
     chords: ["F", "Bm", "Bb", "C_barre", "G_barre"],
     bpmObjetivo: 75,
     puntosClave: [
@@ -91,7 +112,7 @@ E|---1---| (Índice en raíz F)
     nivel: 4,
     categoria: "Intermedio",
     titulo: "Armonía Diatónica y la Escala Pentatónica",
-    teoria: "Estructura interválica de la escala pentatónica menor (1 - b3 - 4 - 5 - b7) y su geometría en la guitarra. Articulaciones expresivas: Hammer-ons, Pull-offs y Bending.",
+    teoria: "Estructura interválica de la escala pentatónica menor (1 - b3 - 4 - 5 - b7) y su geometría en la guitarra. Articulaciones expresivas de guitarra solista: Hammer-ons, Pull-offs y Bending controlado con soporte multi-dedo.",
     ejercicios: [
       "Primera Caja Pentatónica de La Menor (Traste 5) ejecutada con púa alternada estricta.",
       "Ligados en Cadena (Hammer-on y Pull-off): Secuencia 5-7-5 en tercera cuerda con una sola pulsación de púa.",
@@ -99,6 +120,13 @@ E|---1---| (Índice en raíz F)
     ],
     cancion_referencia: "Wish You Were Here (Solos e Intro) - Pink Floyd / Stairway to Heaven (Solo) - Led Zeppelin",
     canal_youtube: "GuitarLessons365 / Paul Davids",
+    youtubeVideoId: "V_6Txb_y8_g",
+    videoTimestamps: [
+      { label: "0:00 - Caja 1 de Pentatónica Menor", seconds: 0, description: "Digitación en traste 5 en tonalidad de Am" },
+      { label: "2:20 - Técnica de Bending de 1 Tono", seconds: 140, description: "Rotación de muñeca y soporte de dedos 1 y 2" },
+      { label: "4:40 - Ligados Hammer-on & Pull-off", seconds: 280, description: "Ataque percusivo y pellizco con el dedo anular" },
+      { label: "6:50 - Fraseo Expresivo y Blue Note", seconds: 410, description: "Resolución melódica sobre acordes de soporte" }
+    ],
     chords: ["Am7", "Cmaj7", "Dm7", "Em7", "G7"],
     bpmObjetivo: 85,
     puntosClave: [
@@ -127,6 +155,13 @@ E|---------5-8---------------------|
     ],
     cancion_referencia: "Stairway to Heaven (Intro) - Led Zeppelin / Estudio de Estilo Acústico Libre",
     canal_youtube: "GuitarLessons365 / Paul Davids",
+    youtubeVideoId: "QkF3oxziUi4",
+    videoTimestamps: [
+      { label: "0:00 - Asignación de Dedos (p-i-m-a)", seconds: 0, description: "Colocación de la mano derecha en forma de arco natural" },
+      { label: "2:10 - Pulgar Alternado (Bajos)", seconds: 130, description: "Patrón de bajo continuo entre 5ª y 4ª cuerda" },
+      { label: "4:30 - Travis Picking Sincopado", seconds: 270, description: "Superposición de notas agudas a contratiempo" },
+      { label: "7:10 - Demostración de Arpegios Clásicos", seconds: 430, description: "Dinámica y balance de volumen polifónico" }
+    ],
     chords: ["Am", "C/G", "D/F#", "Fmaj7", "G6"],
     bpmObjetivo: 80,
     puntosClave: [
@@ -155,6 +190,13 @@ E|---------------------------------|
     ],
     cancion_referencia: "Addicted to Pain (Riff de apertura) - Alter Bridge / Desafío de Limpieza de 30 Días",
     canal_youtube: "Bernth",
+    youtubeVideoId: "s4gBchF_y1E",
+    videoTimestamps: [
+      { label: "0:00 - Ángulo de Púa & Pick Slanting", seconds: 0, description: "Mecánica de escape ascendente y descendente" },
+      { label: "2:00 - Palm Muting en Silletas", seconds: 120, description: "Ataque percusivo nítido y control de armónicos" },
+      { label: "4:15 - Ejercicio de Sincronización en 16avas", seconds: 255, description: "Práctica progresiva de 80 a 140 BPM" },
+      { label: "6:50 - Relajación Muscular Dinámica", seconds: 410, description: "Eliminación de tensión en hombros y antebrazo" }
+    ],
     chords: ["E5", "G5", "A5", "D5", "B5"],
     bpmObjetivo: 130,
     puntosClave: [
@@ -184,6 +226,13 @@ E|-5-6-8-----------------------------------------8-6-5-----|
     ],
     cancion_referencia: "Waves - Guthrie Govan / For the Love of God - Steve Vai",
     canal_youtube: "Learn Waves by Guthrie Govan / Licklibrary / Alejandra",
+    youtubeVideoId: "niT2q0ElP4g",
+    videoTimestamps: [
+      { label: "0:00 - Mecánica del Barrido (Sweep Picking)", seconds: 0, description: "Movimiento continuo de muñeca a través de las cuerdas" },
+      { label: "2:45 - Muting Selectivo de Mano Izquierda", seconds: 165, description: "Despegar dedos al instante para evitar notas solapadas" },
+      { label: "5:20 - Los 7 Modos Griegos en el Mástil", seconds: 320, description: "Mapas modales y notas características" },
+      { label: "8:00 - Sonoridad Lidia (#4) & Satriani Vibe", seconds: 480, description: "Resoluciones melódicas espaciales" }
+    ],
     chords: ["Cmaj7#11", "Am9", "D13", "Em11", "F#m7b5"],
     bpmObjetivo: 140,
     puntosClave: [

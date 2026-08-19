@@ -4,6 +4,7 @@ import { useGuitar } from '../../context/GuitarContext';
 import { CHORD_LIBRARY } from '../../data/courseData';
 import { ChordDiagram } from '../Common/ChordDiagram';
 import { OneMinuteSpeedTrainer } from './OneMinuteSpeedTrainer';
+import { InteractiveVideoPlayer } from './InteractiveVideoPlayer';
 import {
   CheckCircle,
   Circle,
@@ -17,7 +18,8 @@ import {
   CheckCheck,
   Flame,
   FileCode,
-  Share2
+  Share2,
+  Sparkles
 } from 'lucide-react';
 
 interface LessonDetailProps {
@@ -55,11 +57,6 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
     setIsLogging(false);
     setPracticeNotes('');
   };
-
-  // Generate safe search query URL for YouTube lessons
-  const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-    `${lesson.cancion_referencia} ${lesson.canal_youtube} guitar tutorial`
-  )}`;
 
   const handleShare = () => {
     if (navigator.clipboard) {
@@ -178,10 +175,13 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
         </div>
       )}
 
-      {/* Main Grid: Theory and Exercises */}
+      {/* Main Grid: Theory, Video Player and Exercises */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Col: Theory & Key Points (7 cols) */}
+        {/* Left Col: Theory, Video Player & Key Points (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
+          {/* Interactive Video Player with Timestamps & Looper */}
+          <InteractiveVideoPlayer lesson={lesson} />
+
           {/* Theory Card */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="flex items-center gap-2.5 mb-4 text-amber-400">
@@ -246,7 +246,7 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
           )}
         </div>
 
-        {/* Right Col: Interactive Exercises & Reference Song (5 cols) */}
+        {/* Right Col: Interactive Exercises & Song (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Exercises Checklist */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
@@ -261,7 +261,9 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
             <div className="space-y-3">
               {lesson.ejercicios.map((ejercicio, idx) => {
                 const done = isExerciseDone(lesson.id, idx);
-                const isSpeedDrill = ejercicio.toLowerCase().includes('minuto') || ejercicio.toLowerCase().includes('one minute');
+                const isSpeedDrill =
+                  ejercicio.toLowerCase().includes('minuto') ||
+                  ejercicio.toLowerCase().includes('one minute');
 
                 return (
                   <div
@@ -281,7 +283,11 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
                           <Circle className="w-5 h-5 text-slate-500 group-hover:text-slate-400" />
                         )}
                       </button>
-                      <span className={`text-sm leading-relaxed ${done ? 'line-through opacity-70' : ''}`}>
+                      <span
+                        className={`text-sm leading-relaxed ${
+                          done ? 'line-through opacity-70' : ''
+                        }`}
+                      >
                         {ejercicio}
                       </span>
                     </div>
@@ -304,42 +310,23 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({ lesson }) => {
             </div>
           </div>
 
-          {/* Reference Song & YouTube Card */}
+          {/* Reference Song Summary Card */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-            <div className="flex items-center gap-2.5 text-rose-400 mb-4">
-              <Youtube className="w-5 h-5" />
-              <h2 className="text-lg font-bold text-slate-100">Canción y Guía en Video</h2>
+            <div className="flex items-center gap-2.5 text-amber-400 mb-4">
+              <Sparkles className="w-5 h-5" />
+              <h2 className="text-lg font-bold text-slate-100">Canción de Referencia</h2>
             </div>
 
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
-              <div>
-                <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider block">
-                  Canción de Referencia
-                </span>
-                <span className="text-base font-bold text-slate-100 block mt-0.5">
-                  {lesson.cancion_referencia}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider block">
-                  Canal Recomendado
-                </span>
-                <span className="text-sm font-semibold text-amber-400 block mt-0.5">
-                  {lesson.canal_youtube}
-                </span>
-              </div>
-
-              <a
-                href={youtubeSearchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-rose-600/20"
-              >
-                <Youtube className="w-4 h-4" />
-                <span>Ver Lección en YouTube de {lesson.canal_youtube.split('/')[0]}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2">
+              <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider block">
+                Repertorio Aplicado
+              </span>
+              <span className="text-base font-bold text-slate-100 block">
+                {lesson.cancion_referencia}
+              </span>
+              <p className="text-xs text-slate-400 pt-1">
+                Aprende esta pieza para consolidar la armonía y articulaciones de este nivel.
+              </p>
             </div>
           </div>
         </div>

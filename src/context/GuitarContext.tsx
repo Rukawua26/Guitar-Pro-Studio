@@ -31,6 +31,7 @@ interface GuitarContextType {
   clearNotifications: () => void;
   addNotification: (title: string, message: string, type?: 'info' | 'success' | 'warning') => void;
   updateProfile: (data: Partial<UserProfile>) => void;
+  setCustomLessonVideo: (lessonId: string, urlOrId: string) => void;
   exportUserData: (format: 'json' | 'csv') => void;
   importUserData: (jsonData: string) => boolean;
 }
@@ -279,6 +280,21 @@ export const GuitarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setProfile(prev => ({ ...prev, ...data }));
   };
 
+  const setCustomLessonVideo = (lessonId: string, urlOrId: string) => {
+    setProfile(prev => ({
+      ...prev,
+      customVideoUrls: {
+        ...(prev.customVideoUrls || {}),
+        [lessonId]: urlOrId.trim()
+      }
+    }));
+    addNotification(
+      'Enlace de Video Actualizado 🎬',
+      `Se guardó el enlace de YouTube para la lección ${lessonId}.`,
+      'success'
+    );
+  };
+
   const exportUserData = (format: 'json' | 'csv') => {
     if (format === 'json') {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ profile, recordings }, null, 2));
@@ -344,6 +360,7 @@ export const GuitarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         clearNotifications,
         addNotification,
         updateProfile,
+        setCustomLessonVideo,
         exportUserData,
         importUserData
       }}

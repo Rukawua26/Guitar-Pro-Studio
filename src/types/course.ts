@@ -1,3 +1,9 @@
+export interface VideoTimestamp {
+  label: string;
+  seconds: number;
+  description?: string;
+}
+
 export interface Lesson {
   id: string;
   nivel: number;
@@ -7,6 +13,8 @@ export interface Lesson {
   ejercicios: string[];
   cancion_referencia: string;
   canal_youtube: string;
+  youtubeVideoId?: string;
+  videoTimestamps?: VideoTimestamp[];
   tabSnippet?: string;
   chords?: string[];
   bpmObjetivo?: number;
@@ -72,4 +80,5 @@ export interface UserProfile {
   soundEnabled: boolean;
   language: 'es' | 'en';
   dailyGoalMinutes: number;
+  customVideoUrls?: Record<string, string>; // key: lessonId, value: videoId or URL
 }
