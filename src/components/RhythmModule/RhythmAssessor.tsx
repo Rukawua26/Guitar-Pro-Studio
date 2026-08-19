@@ -52,17 +52,27 @@ export const RhythmAssessor: React.FC = () => {
     } else {
       // Start mic
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        });
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+        } catch (e) {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+
+        if (!stream) throw new Error('No stream');
         micStreamRef.current = stream;
 
         const ctx = audioEngine.getContext();
         audioCtxRef.current = ctx;
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
 
         const source = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
@@ -74,7 +84,7 @@ export const RhythmAssessor: React.FC = () => {
         setIsListeningMic(true);
         startOnsetDetection();
       } catch (err) {
-        alert('No se pudo acceder al micrófono. Por favor permite el acceso.');
+        alert('No se pudo acceder al micrófono. Por favor permite el acceso en el navegador o utiliza el botón "Pulsar Espacio / Tap" para evaluar tu ritmo.');
       }
     }
   };

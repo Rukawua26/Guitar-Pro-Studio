@@ -167,13 +167,20 @@ export const SuperaElCompas: React.FC = () => {
 
   const startListening = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          autoGainControl: false,
-          noiseSuppression: false
-        }
-      });
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false
+          }
+        });
+      } catch (e) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      if (!stream) throw new Error('No audio stream');
       streamRef.current = stream;
 
       const AudioContextClass =
@@ -181,6 +188,10 @@ export const SuperaElCompas: React.FC = () => {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new AudioContextClass();
       audioCtxRef.current = audioCtx;
+
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
 
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
@@ -193,7 +204,7 @@ export const SuperaElCompas: React.FC = () => {
       yinDetector.resetSmoothing();
       runEvaluationLoop();
     } catch (err) {
-      alert('Por favor autoriza el micrófono para que el Listening Engine evalúe tus notas en tiempo real.');
+      alert('No se pudo acceder al micrófono. Recuerda permitir el acceso en el navegador o usa el botón "Avanzar Compás Manualmente" para practicar.');
       setIsListening(false);
     }
   };
