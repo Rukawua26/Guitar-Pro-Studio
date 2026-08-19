@@ -1,0 +1,6 @@
+{
+  "name": "GuitarStudio Pro - Curso Interactivo & Afinador Web",
+  "description": "Plataforma completa de aprendizaje de guitarra de 7 niveles, afinador digital de alta precisión por autocorrelación, grabadora y editor de audio, diapasón interactivo y metrónomo.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
